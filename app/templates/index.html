@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ app_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+<div class="container mx-auto p-6">
+
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">{{ app_title }}</h1>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="bg-white p-4 rounded-lg shadow mb-6">
+        <form action="/" method="GET">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Buscar por nombre, núm. empleado o núm. serie</label>
+                    <input type="text" name="buscar" value="{{ buscar }}" placeholder="Nombre, núm. empleado o serie..."
+                        class="w-full p-2 border rounded bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Ubicación / Posición</label>
+                    <select name="posicion" class="w-full p-2 border rounded bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Todas las ubicaciones</option>
+                        {% for p in posiciones %}
+                        <option value="{{ p.nombre }}" {% if filtro_posicion == p.nombre %}selected{% endif %}>{{ p.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Tipo de Activo</label>
+                    <select name="tipo_activo" class="w-full p-2 border rounded bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-500 capitalize">
+                        <option value="">Todos los tipos</option>
+                        {% for t in tipos %}
+                        <option value="{{ t.nombre }}" {% if tipo_seleccionado == t.nombre %}selected{% endif %}>{{ t.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="flex space-x-2 justify-end mt-3">
+                <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 px-5 rounded text-sm shadow">Filtrar</button>
+                {% if buscar or tipo_seleccionado or filtro_posicion %}
+                <a href="/" class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2 px-4 rounded text-sm text-center">Limpiar filtros</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr class="bg-gray-800 text-white text-left text-sm uppercase font-semibold">
+                    <th class="px-5 py-3">Tipo</th>
+                    <th class="px-5 py-3">Marca / Modelo</th>
+                    <th class="px-5 py-3">Núm. Serie</th>
+                    <th class="px-5 py-3">Responsable</th>
+                    <th class="px-5 py-3">Ubicación / Posición</th>
+                    <th class="px-5 py-3 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-700 text-sm">
+                {% for activo in activos %}
+                <tr id="fila-{{ activo.id }}" class="border-b border-gray-200 hover:bg-gray-50 transition-all">
+                    <td class="px-5 py-4 capitalize">
+                        <span class="px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-semibold">{{ activo.tipo_activo }}</span>
+                    </td>
+                    <td class="px-5 py-4">{{ activo.marca }} / {{ activo.modelo }}</td>
+                    <td class="px-5 py-4 text-xs text-gray-600">{{ activo.num_serie }}</td>
+                    <td class="px-5 py-4">
+                        {% if activo.responsable %}
+                            <span class="font-semibold block">{{ activo.responsable.nombre }}</span>
+                            <span class="text-xs text-gray-500">
+                                Emp: {% if activo.responsable.num_empleado.startswith('sin-emp-') %}No aplica{% else %}{{ activo.responsable.num_empleado }}{% endif %}
+                            </span>
+                        {% else %}
+                            <span class="font-semibold block text-gray-400 italic">No aplica</span>
+                            <span class="text-xs text-gray-400">Emp: No aplica</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-4">
+                        {{ activo.posicion }}
+                    </td>
+                    <td class="px-5 py-4 text-center">
+                        <div class="flex justify-center space-x-2">
+                            <button onclick="abrirModal('modal-{{ activo.id }}')"
+                                class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1.5 px-3 rounded shadow transition">
+                                Ver / Editar
+                            </button>
+                            <button onclick="confirmarEliminar({{ activo.id }})"
+                                class="bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-1.5 px-3 rounded shadow transition">
+                                Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- MODAL VER/EDITAR -->
+                <div id="modal-{{ activo.id }}" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 overflow-y-auto pt-10 px-4">
+                    <div class="bg-white rounded-lg max-w-4xl mx-auto shadow-2xl overflow-hidden mb-10">
+                        <form action="/editar_activo/{{ activo.id }}" method="POST">
+                            <input type="hidden" name="{{ csrf_field_name }}" value="{{ csrf_token() }}">
+                            <input type="hidden" name="f_buscar" value="{{ buscar }}">
+                            <input type="hidden" name="f_tipo_activo" value="{{ tipo_seleccionado }}">
+                            <input type="hidden" name="f_posicion" value="{{ filtro_posicion }}">
+                            <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
+                                <h3 class="text-xl font-bold">Ficha Técnica - {{ activo.tipo_activo | capitalize }} #{{ activo.num_activo }}</h3>
+                                <button type="button" onclick="cerrarModal('modal-{{ activo.id }}')" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
+                            </div>
+
+                            <div class="p-6 space-y-6 max-h-[72vh] overflow-y-auto">
+                                <fieldset id="fields-{{ activo.id }}" disabled class="space-y-6">
+
+                                    {% set resp = activo.responsable %}
+                                    <div class="bg-gray-50 p-4 rounded border">
+                                        <h4 class="text-sm font-bold text-blue-600 uppercase mb-3 border-b pb-1">Asignación e Infraestructura Humana</h4>
+                                        <div id="aviso-resp-{{ activo.id }}" class="hidden mb-3 text-xs text-yellow-800 bg-yellow-100 border border-yellow-300 p-2 rounded">
+                                            🔒 Este responsable ya está registrado en otro activo. Sus datos no se modifican desde aquí. Para usar otro responsable, borra el número de empleado.
+                                        </div>
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                                            <div><label class="font-bold text-gray-500">N° Empleado:</label>
+                                                <input type="text" name="num_empleado"
+                                                    value="{% if resp %}{% if resp.num_empleado.startswith('sin-emp-') %}No aplica{% else %}{{ resp.num_empleado }}{% endif %}{% else %}No aplica{% endif %}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Nombre del Responsable:</label>
+                                                <input type="text" name="nombre" value="{% if resp %}{{ resp.nombre }}{% else %}No aplica{% endif %}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Extensión:</label>
+                                                <input type="text" name="extension" value="{% if resp %}{{ resp.extension }}{% else %}No aplica{% endif %}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Departamento:</label>
+                                                <input type="text" name="departamento" value="{% if resp %}{{ resp.departamento }}{% else %}No aplica{% endif %}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Puesto:</label>
+                                                <input type="text" name="puesto" value="{% if resp %}{{ resp.puesto }}{% else %}No aplica{% endif %}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-gray-50 p-4 rounded border">
+                                        <h4 class="text-sm font-bold text-blue-600 uppercase mb-3 border-b pb-1">Características Físicas del Activo</h4>
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                                            <div><label class="font-bold text-gray-500">Número de Activo:</label>
+                                                <input type="text" name="num_activo" value="{{ activo.num_activo }}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-bold text-blue-900 mt-1"></div>
+                                            <div>
+                                                <label class="font-bold text-gray-500">Tipo Activo:</label>
+                                                <select name="tipo_activo" id="select-tipo-{{ activo.id }}"
+                                                    onchange="evaluarOtroModal('{{ activo.id }}')"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1 capitalize">
+                                                    {% for t in tipos %}
+                                                    <option value="{{ t.nombre }}" {% if activo.tipo_activo == t.nombre %}selected{% endif %}>{{ t.nombre }}</option>
+                                                    {% endfor %}
+                                                    <option value="otro" class="text-red-600 font-bold">Otro (Agregar nuevo...)</option>
+                                                </select>
+                                                <input type="text" name="nuevo_tipo_texto" id="input-otro-{{ activo.id }}"
+                                                    class="hidden w-full p-1.5 border border-red-400 rounded text-sm bg-white mt-1">
+                                            </div>
+                                            <div><label class="font-bold text-gray-500">Marca:</label>
+                                                <input type="text" name="marca" value="{{ activo.marca }}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Modelo:</label>
+                                                <input type="text" name="modelo" value="{{ activo.modelo }}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Número de Serie:</label>
+                                                <input type="text" name="num_serie" value="{{ activo.num_serie }}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Accesorio:</label>
+                                                <input type="text" name="accesorio" value="{{ activo.accesorio }}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Clasificación:</label>
+                                                <input type="text" name="clasificacion" value="{{ activo.clasificacion }}"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1"></div>
+                                            <div>
+                                                <label class="font-bold text-gray-500">Posición Física:</label>
+                                                <select name="posicion" id="select-posicion-{{ activo.id }}" onchange="evaluarOtraPosicionModal('{{ activo.id }}')"
+                                                    class="w-full p-1.5 border rounded text-sm bg-gray-100 font-medium text-gray-800 mt-1">
+                                                    <option value="No aplica" {% if activo.posicion == 'No aplica' or not activo.posicion %}selected{% endif %}>No aplica</option>
+                                                    {% for p in posiciones %}
+                                                    <option value="{{ p.nombre }}" {% if activo.posicion == p.nombre %}selected{% endif %}>{{ p.nombre }}</option>
+                                                    {% endfor %}
+                                                    <option value="otro" class="text-red-600 font-bold">Otra (agregar nueva...)</option>
+                                                </select>
+                                                <input type="text" name="nueva_posicion_texto" id="input-otra-posicion-{{ activo.id }}"
+                                                    class="hidden w-full p-1.5 border border-red-400 rounded text-sm bg-white mt-1" placeholder="Escribe la nueva ubicación...">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-blue-50 p-4 rounded border">
+                                        <h4 class="text-sm font-bold text-blue-800 uppercase mb-3 border-b pb-1">Especificaciones de Cómputo y Red</h4>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                                            <div><label class="font-bold text-gray-500">Procesador:</label><input type="text" name="procesador" value="{{ activo.detalles.procesador if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">IPv4:</label><input type="text" name="ipv4" value="{{ activo.detalles.ipv4 if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">MAC Address:</label><input type="text" name="mac_address" value="{{ activo.detalles.mac_address if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">RAM:</label><input type="text" name="ram" value="{{ activo.detalles.ram if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Tipo Almacenamiento:</label><input type="text" name="tipo_almacenamiento" value="{{ activo.detalles.tipo_almacenamiento if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Capacidad:</label><input type="text" name="capacidad" value="{{ activo.detalles.capacidad if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Nombre Máquina:</label><input type="text" name="nombre_maquina" value="{{ activo.detalles.nombre_maquina if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Sistema Operativo:</label><input type="text" name="sistema_operativo" value="{{ activo.detalles.sistema_operativo if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Dominio:</label><input type="text" name="dominio" value="{{ activo.detalles.dominio if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">VPN:</label><input type="text" name="vpn" value="{{ activo.detalles.vpn if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Usuario AD:</label><input type="text" name="usuario_ad" value="{{ activo.detalles.usuario_ad if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Usuario Correo:</label><input type="text" name="usuario_correo" value="{{ activo.detalles.usuario_correo if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-gray-50 p-4 rounded border">
+                                        <h4 class="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-1">Software Base Instalado</h4>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                                            <div><label class="font-bold text-gray-500">Office:</label><input type="text" name="office" value="{{ activo.detalles.office if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Antivirus:</label><input type="text" name="antivirus" value="{{ activo.detalles.antivirus if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Lector PDF:</label><input type="text" name="lector_pdf" value="{{ activo.detalles.lector_pdf if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Navegadores:</label><input type="text" name="navegadores" value="{{ activo.detalles.navegadores if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Compresor:</label><input type="text" name="compresor" value="{{ activo.detalles.compresor if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Videoconferencia:</label><input type="text" name="videoconferencia" value="{{ activo.detalles.videoconferencia if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-500">Drivers Impresora:</label><input type="text" name="software_impresora" value="{{ activo.detalles.software_impresora if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-green-50 p-4 rounded border">
+                                        <h4 class="text-sm font-bold text-green-800 uppercase mb-3 border-b pb-1">{{ specialized_systems_title }}</h4>
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.helpdesk_system }}:</label><input type="text" name="helpdesk_system" value="{{ activo.detalles.helpdesk_system if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.system_a }}:</label><input type="text" name="system_a" value="{{ activo.detalles.system_a if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.system_b }}:</label><input type="text" name="system_b" value="{{ activo.detalles.system_b if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.system_c }}:</label><input type="text" name="system_c" value="{{ activo.detalles.system_c if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.messaging_system }}:</label><input type="text" name="messaging_system" value="{{ activo.detalles.messaging_system if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.erp_system }}:</label><input type="text" name="erp_system" value="{{ activo.detalles.erp_system if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.learning_platform }}:</label><input type="text" name="learning_platform" value="{{ activo.detalles.learning_platform if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.quality_system }}:</label><input type="text" name="quality_system" value="{{ activo.detalles.quality_system if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                            <div><label class="font-bold text-gray-600">{{ system_labels.internal_database }}:</label><input type="text" name="internal_database" value="{{ activo.detalles.internal_database if activo.detalles else 'No aplica' }}" class="w-full p-1 border rounded bg-gray-100 mt-1"></div>
+                                        </div>
+                                    </div>
+
+                                </fieldset>
+                            </div>
+
+                            <div class="bg-gray-100 px-6 py-4 flex justify-between items-center">
+                                <button type="button" id="btn-edit-{{ activo.id }}" onclick="habilitarEdicion('{{ activo.id }}')"
+                                    class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-4 rounded text-sm shadow transition">
+                                    Modificar Información
+                                </button>
+                                <div class="flex space-x-2">
+                                    <button type="submit" id="btn-save-{{ activo.id }}"
+                                        class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded text-sm shadow transition">
+                                        Guardar Cambios
+                                    </button>
+                                    <button type="button" onclick="cerrarModal('modal-{{ activo.id }}')"
+                                        class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded text-sm">
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- FORM OCULTO ELIMINAR -->
+                <form id="form-eliminar-{{ activo.id }}" action="/eliminar_activo/{{ activo.id }}" method="POST" class="hidden">
+                    <input type="hidden" name="{{ csrf_field_name }}" value="{{ csrf_token() }}">
+                    <input type="hidden" name="f_buscar" value="{{ buscar }}">
+                    <input type="hidden" name="f_tipo_activo" value="{{ tipo_seleccionado }}">
+                    <input type="hidden" name="f_posicion" value="{{ filtro_posicion }}">
+                </form>
+
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-5 py-10 text-center text-gray-500 bg-gray-50 italic">No hay registros.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMACIÓN ELIMINAR -->
+<div id="modal-confirmar-eliminar" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-2xl p-6 max-w-sm w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-800 mb-2">¿Eliminar activo?</h3>
+        <p class="text-sm text-gray-600 mb-4">Esta acción no se puede deshacer. ¿Confirmas la eliminación?</p>
+        <div class="flex justify-end space-x-3">
+            <button onclick="cancelarEliminar()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded text-sm">Cancelar</button>
+            <button id="btn-confirmar-eliminar" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm">Sí, eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ÉXITO: NUEVO ACTIVO -->
+<div id="modal-creado" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div class="text-green-500 text-5xl mb-3">✓</div>
+        <h3 class="text-lg font-bold text-gray-800 mb-1">¡Nuevo activo guardado!</h3>
+        <p class="text-sm text-gray-500 mb-5">El activo se registró correctamente.</p>
+        <button onclick="cerrarModalExito('modal-creado')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded text-sm">Aceptar</button>
+    </div>
+</div>
+
+<!-- MODAL ÉXITO: MODIFICADO -->
+<div id="modal-modificado" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div class="text-blue-500 text-5xl mb-3">✎</div>
+        <h3 class="text-lg font-bold text-gray-800 mb-1">¡Activo modificado!</h3>
+        <p class="text-sm text-gray-500 mb-5">Los cambios se guardaron correctamente.</p>
+        <button onclick="cerrarModalExito('modal-modificado')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded text-sm">Aceptar</button>
+    </div>
+</div>
+
+<!-- MODAL ÉXITO: ELIMINADO -->
+<div id="modal-eliminado" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div class="text-red-400 text-5xl mb-3">🗑</div>
+        <h3 class="text-lg font-bold text-gray-800 mb-1">Activo eliminado</h3>
+        <p class="text-sm text-gray-500 mb-5">El registro fue eliminado correctamente.</p>
+        <button onclick="cerrarModalExito('modal-eliminado')" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded text-sm">Aceptar</button>
+    </div>
+</div>
+
+<!-- BOTÓN FLOTANTE PARA REGISTRAR -->
+<a id="link-nuevo" href="/nuevo_activo"
+   class="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-full shadow-2xl flex items-center transition z-40 text-sm">
+    + Nuevo Activo
+</a>
+
+<!-- BOTÓN FLOTANTE PARA CREAR REPORTE -->
+<a id="link-reporte" href="/reporte"
+   class="fixed bottom-6 left-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-full shadow-2xl flex items-center transition z-40 text-sm">
+    📊 Crear Reporte
+</a>
+
+<script>
+    // Filtros actuales (vienen del backend)
+    var FILTROS = {
+        buscar: {{ buscar | tojson }},
+        tipo_activo: {{ tipo_seleccionado | tojson }},
+        posicion: {{ filtro_posicion | tojson }}
+    };
+
+    // Construir query string de filtros (sin incluir flags de éxito)
+    function filtrosQuery() {
+        var params = new URLSearchParams();
+        if (FILTROS.buscar) params.set('buscar', FILTROS.buscar);
+        if (FILTROS.tipo_activo) params.set('tipo_activo', FILTROS.tipo_activo);
+        if (FILTROS.posicion) params.set('posicion', FILTROS.posicion);
+        return params.toString();
+    }
+
+    // El botón "Nuevo Activo" lleva los filtros actuales como query string
+    (function() {
+        var q = filtrosQuery();
+        var link = document.getElementById('link-nuevo');
+        link.href = '/nuevo_activo' + (q ? ('?' + q) : '');
+        var linkRep = document.getElementById('link-reporte');
+        if (linkRep) linkRep.href = '/reporte' + (q ? ('?' + q) : '');
+    })();
+
+    // Manejo de modales de éxito + scroll. Al limpiar la URL, conservar los filtros.
+    (function() {
+        var params = new URLSearchParams(window.location.search);
+        var urlLimpia = window.location.pathname;
+        var q = filtrosQuery();
+        if (q) urlLimpia += '?' + q;
+
+        if (params.get('creado') === '1') {
+            var nuevoId = params.get('id');
+            if (nuevoId) {
+                setTimeout(function() {
+                    var fila = document.getElementById('fila-' + nuevoId);
+                    if (fila) {
+                        fila.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        fila.classList.add('bg-green-100');
+                        setTimeout(function() { fila.classList.remove('bg-green-100'); }, 2500);
+                    }
+                }, 100);
+            }
+            document.getElementById('modal-creado').classList.remove('hidden');
+            history.replaceState({}, '', urlLimpia);
+        }
+        else if (params.get('modificado') === '1') {
+            var pos = sessionStorage.getItem('scrollPos');
+            var modId = params.get('id');
+            setTimeout(function() {
+                if (pos !== null) {
+                    window.scrollTo(0, parseInt(pos));
+                    sessionStorage.removeItem('scrollPos');
+                }
+                if (modId) {
+                    var fila = document.getElementById('fila-' + modId);
+                    if (fila) {
+                        if (pos === null) fila.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        fila.classList.add('bg-blue-100');
+                        setTimeout(function() { fila.classList.remove('bg-blue-100'); }, 2500);
+                    }
+                }
+            }, 50);
+            document.getElementById('modal-modificado').classList.remove('hidden');
+            history.replaceState({}, '', urlLimpia);
+        }
+        else if (params.get('eliminado') === '1') {
+            var posElim = sessionStorage.getItem('scrollPos');
+            if (posElim !== null) {
+                setTimeout(function() {
+                    window.scrollTo(0, parseInt(posElim));
+                    sessionStorage.removeItem('scrollPos');
+                }, 50);
+            }
+            document.getElementById('modal-eliminado').classList.remove('hidden');
+            history.replaceState({}, '', urlLimpia);
+        }
+    })();
+
+    // Guardar posición de scroll antes de cualquier submit a editar_activo
+    document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (form && form.action && form.action.indexOf('/editar_activo/') !== -1) {
+            sessionStorage.setItem('scrollPos', window.scrollY);
+        }
+    });
+
+    function cerrarModalExito(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    function abrirModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function habilitarEdicion(id) {
+        const fieldset = document.getElementById('fields-' + id);
+        fieldset.removeAttribute('disabled');
+        fieldset.querySelectorAll('input, select').forEach(el => {
+            el.classList.remove('bg-gray-100');
+            el.classList.add('bg-white', 'border-blue-400', 'ring-1', 'ring-blue-400');
+        });
+        document.getElementById('btn-edit-' + id).classList.add('hidden');
+        document.getElementById('btn-save-' + id).classList.remove('hidden');
+        setupAutollenadoModal(id);
+        const numEmpInput = document.getElementById('fields-' + id).querySelector('input[name="num_empleado"]');
+        if (numEmpInput) {
+            const v = numEmpInput.value.trim();
+            if (v && v.toLowerCase() !== 'no aplica' && v.length >= 3) {
+                autollenarModal(id, 'num_empleado=' + encodeURIComponent(v));
+            }
+        }
+    }
+
+    function setupAutollenadoModal(id) {
+        const fieldset = document.getElementById('fields-' + id);
+        const numEmpInput = fieldset.querySelector('input[name="num_empleado"]');
+        const nombreInput = fieldset.querySelector('input[name="nombre"]');
+
+        if (numEmpInput && !numEmpInput.dataset.listenerActivo) {
+            numEmpInput.dataset.listenerActivo = '1';
+            numEmpInput.addEventListener('input', function() {
+                const v = this.value.trim();
+                if (!v || v.toLowerCase() === 'no aplica') {
+                    desbloquearCamposResponsable(id);
+                    return;
+                }
+                if (v.length >= 3) {
+                    autollenarModal(id, 'num_empleado=' + encodeURIComponent(v));
+                }
+            });
+        }
+
+        if (nombreInput && !nombreInput.dataset.listenerActivo) {
+            nombreInput.dataset.listenerActivo = '1';
+            nombreInput.addEventListener('input', function() {
+                const v = this.value.trim();
+                if (v && v.toLowerCase() !== 'no aplica' && v.length >= 4) {
+                    autollenarModal(id, 'nombre=' + encodeURIComponent(v));
+                }
+            });
+        }
+    }
+
+    function camposResponsableBloqueables(id) {
+        const fieldset = document.getElementById('fields-' + id);
+        return ['nombre', 'extension', 'departamento', 'puesto'].map(
+            name => fieldset.querySelector('input[name="' + name + '"]')
+        ).filter(el => el);
+    }
+
+    function bloquearCamposResponsable(id) {
+        camposResponsableBloqueables(id).forEach(el => {
+            el.readOnly = true;
+            el.classList.add('bg-yellow-50', 'cursor-not-allowed');
+            el.classList.remove('bg-white', 'ring-blue-400');
+        });
+        const aviso = document.getElementById('aviso-resp-' + id);
+        if (aviso) aviso.classList.remove('hidden');
+    }
+
+    function desbloquearCamposResponsable(id) {
+        camposResponsableBloqueables(id).forEach(el => {
+            el.readOnly = false;
+            el.classList.remove('bg-yellow-50', 'cursor-not-allowed');
+            const fs = document.getElementById('fields-' + id);
+            if (!fs.disabled) {
+                el.classList.add('bg-white');
+            }
+        });
+        const aviso = document.getElementById('aviso-resp-' + id);
+        if (aviso) aviso.classList.add('hidden');
+    }
+
+    function autollenarModal(id, urlParam) {
+        fetch('/api/responsable/buscar?' + urlParam)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.existe) {
+                    desbloquearCamposResponsable(id);
+                    return;
+                }
+                const fieldset = document.getElementById('fields-' + id);
+                const set = (name, val) => {
+                    const el = fieldset.querySelector('input[name="' + name + '"]');
+                    if (el) el.value = val || 'No aplica';
+                };
+                set('num_empleado', data.num_empleado);
+                set('nombre', data.nombre);
+                set('extension', data.extension);
+                set('departamento', data.departamento);
+                set('puesto', data.puesto);
+                bloquearCamposResponsable(id);
+            });
+    }
+
+    function evaluarOtroModal(id) {
+        var select = document.getElementById('select-tipo-' + id);
+        var input = document.getElementById('input-otro-' + id);
+        if (select.value === 'otro') { input.classList.remove('hidden'); input.focus(); }
+        else { input.classList.add('hidden'); }
+    }
+
+    function evaluarOtraPosicionModal(id) {
+        var select = document.getElementById('select-posicion-' + id);
+        var input = document.getElementById('input-otra-posicion-' + id);
+        if (select.value === 'otro') { input.classList.remove('hidden'); input.focus(); }
+        else { input.classList.add('hidden'); }
+    }
+
+    var _idAEliminar = null;
+    function confirmarEliminar(id) {
+        _idAEliminar = id;
+        document.getElementById('modal-confirmar-eliminar').classList.remove('hidden');
+        document.getElementById('btn-confirmar-eliminar').onclick = function() {
+            sessionStorage.setItem('scrollPos', window.scrollY);
+            document.getElementById('form-eliminar-' + _idAEliminar).submit();
+        };
+    }
+    function cancelarEliminar() {
+        _idAEliminar = null;
+        document.getElementById('modal-confirmar-eliminar').classList.add('hidden');
+    }
+</script>
+</body>
+</html>

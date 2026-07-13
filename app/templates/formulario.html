@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Registrar Activo</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+</head>
+
+<body class="bg-gray-100 font-sans p-6">
+
+    <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow">
+
+        <div class="flex justify-between items-center mb-6 border-b pb-2">
+
+            <h2 class="text-2xl font-bold text-gray-800">Alta de Activos e Infraestructura</h2>
+
+            <span id="notificacion" class="hidden text-xs bg-green-100 text-green-800 px-3 py-1 rounded font-semibold animate-pulse">
+
+                ¡Empleado encontrado! Datos auto-llenados
+
+            </span>
+
+        </div>
+
+        {% if error_duplicado %}
+
+        <div class="bg-red-100 border border-red-400 text-red-800 px-4 py-3 rounded mb-4 text-sm font-semibold">
+
+            ⚠️ El número de activo <strong>{{ num_activo_duplicado }}</strong> ya está registrado. Por favor usa un número diferente.
+
+        </div>
+
+        {% endif %}
+
+        <form action="/nuevo_activo{{ ('?' + request.query_string.decode()) if request.query_string else '' }}" method="POST" class="space-y-6" id="form-alta">
+            <input type="hidden" name="{{ csrf_field_name }}" value="{{ csrf_token() }}">
+
+            <div>
+
+                <h3 class="text-lg font-semibold text-blue-600 mb-3">Datos del Responsable / Puesto</h3>
+
+                <div id="aviso-resp-alta" class="hidden mb-3 text-xs text-yellow-800 bg-yellow-100 border border-yellow-300 p-2 rounded">
+
+                    🔒 Este responsable ya está registrado. Sus datos no se modifican desde aquí. Para usar otro responsable, borra el número de empleado.
+
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    <div>
+
+                        <label class="block text-xs font-bold uppercase text-gray-600">Num. Empleado</label>
+
+                        <input type="text" id="num_empleado" name="num_empleado" class="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-blue-500">
+
+                    </div>
+
+                    <div>
+
+                        <label class="block text-xs font-bold uppercase text-gray-600">Nombre Completo</label>
+
+                        <input type="text" id="nombre" name="nombre" class="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-blue-500">
+
+                    </div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Extensión</label><input type="text" id="extension" name="extension" class="w-full p-2 border rounded mt-1"></div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Departamento</label><input type="text" id="departamento" name="departamento" class="w-full p-2 border rounded mt-1"></div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Puesto</label><input type="text" id="puesto" name="puesto" class="w-full p-2 border rounded mt-1"></div>
+
+                </div>
+
+            </div>
+
+            <div class="border-t pt-4">
+
+                <h3 class="text-lg font-semibold text-blue-600 mb-3">Datos Básicos del Activo</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    <div>
+
+                        <label class="block text-xs font-bold uppercase text-gray-600">
+
+                            Número de Activo <span class="text-red-500">*</span>
+
+                            <span class="text-gray-400 font-normal normal-case ml-1">(vacío = No aplica)</span>
+
+                        </label>
+
+                        <input type="text" id="num_activo" name="num_activo"
+
+                            class="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-blue-500"
+
+                            placeholder="Déjalo vacío si no aplica">
+
+                        <p id="alerta-duplicado" class="hidden text-xs text-red-600 font-semibold mt-1">
+
+                            ⚠️ Este número de activo ya está registrado. No podrás guardarlo.
+
+                        </p>
+
+                    </div>
+
+                    <div>
+
+                        <label class="block text-xs font-bold uppercase text-gray-600">
+
+                            Tipo de Activo <span class="text-red-500">*</span>
+
+                        </label>
+
+                        <select name="tipo_activo" id="tipo_activo" onchange="verificarOtroAlta()" class="w-full p-2 border rounded mt-1 bg-white outline-none capitalize">
+
+                            {% for t in tipos %}
+
+                            <option value="{{ t.nombre }}">{{ t.nombre }}</option>
+
+                            {% endfor %}
+
+                            <option value="otro" class="text-red-600 font-bold">Otro (Agregar nuevo...)</option>
+
+                        </select>
+
+                        <input type="text" name="nuevo_tipo_texto" id="nuevo_tipo_texto" class="hidden w-full p-2 border border-red-400 rounded mt-2 outline-none bg-red-50 focus:bg-white" placeholder="Escribe el nuevo tipo...">
+
+                    </div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Marca</label><input type="text" name="marca" class="w-full p-2 border rounded mt-1"></div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Modelo</label><input type="text" name="modelo" class="w-full p-2 border rounded mt-1"></div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Número de Serie</label><input type="text" name="num_serie" class="w-full p-2 border rounded mt-1"></div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Accesorio</label><input type="text" name="accesorio" class="w-full p-2 border rounded mt-1"></div>
+
+                    <div><label class="block text-xs font-bold uppercase text-gray-600">Clasificación</label><input type="text" name="clasificacion" class="w-full p-2 border rounded mt-1"></div>
+
+                    <div>
+
+                        <label class="block text-xs font-bold uppercase text-gray-600">Posición Física (Lugar)</label>
+
+                        <select name="posicion" id="posicion" onchange="verificarOtraPosicionAlta()" class="w-full p-2 border rounded mt-1 bg-white outline-none">
+
+                            <option value="No aplica">No aplica</option>
+
+                            {% for p in posiciones %}
+
+                            <option value="{{ p.nombre }}">{{ p.nombre }}</option>
+
+                            {% endfor %}
+
+                            <option value="otro" class="text-red-600 font-bold">Otra (agregar nueva...)</option>
+
+                        </select>
+
+                        <input type="text" name="nueva_posicion_texto" id="nueva_posicion_texto" class="hidden w-full p-2 border border-red-400 rounded mt-2 outline-none bg-red-50 focus:bg-white" placeholder="Escribe la nueva ubicación...">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="border-t pt-4 space-y-4">
+
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Especificaciones Técnicas, Red y Software Avanzado</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded border">
+
+                    <div><label class="block text-xs font-bold text-gray-700">Procesador</label><input type="text" name="procesador" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">IPv4</label><input type="text" name="ipv4" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">MAC Address</label><input type="text" name="mac_address" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Cantidad RAM</label><input type="text" name="ram" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div>
+
+                        <label class="block text-xs font-bold text-gray-700">Tipo Almacenamiento</label>
+
+                        <input type="text" name="tipo_almacenamiento" placeholder="Ej: SSD" class="w-full p-1 border rounded text-sm mt-1 outline-none focus:ring-1 focus:ring-blue-400">
+
+                    </div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Capacidad</label><input type="text" name="capacidad" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Nombre de la Máquina</label><input type="text" name="nombre_maquina" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Sistema Operativo</label><input type="text" name="sistema_operativo" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded border">
+
+                    <div><label class="block text-xs font-bold text-gray-700">Versión Office</label><input type="text" name="office" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Antivirus</label><input type="text" name="antivirus" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Lector PDF</label><input type="text" name="lector_pdf" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Navegador(es)</label><input type="text" name="navegadores" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Compresor Archivos</label><input type="text" name="compresor" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Videoconferencia</label><input type="text" name="videoconferencia" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Software Impresora</label><input type="text" name="software_impresora" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Dominio</label><input type="text" name="dominio" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">VPN</label><input type="text" name="vpn" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Usuario AD</label><input type="text" name="usuario_ad" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                    <div><label class="block text-xs font-bold text-gray-700">Usuario Correo</label><input type="text" name="usuario_correo" class="w-full p-1 border rounded text-sm mt-1"></div>
+
+                </div>
+
+                <div class="p-4 bg-green-50 rounded border">
+
+                    <label class="block text-xs font-bold text-gray-700 mb-2 uppercase text-center">{{ specialized_systems_title }}</label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.helpdesk_system }}</label><input type="text" name="helpdesk_system" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.system_a }}</label><input type="text" name="system_a" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.system_b }}</label><input type="text" name="system_b" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.system_c }}</label><input type="text" name="system_c" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.messaging_system }}</label><input type="text" name="messaging_system" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.erp_system }}</label><input type="text" name="erp_system" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.learning_platform }}</label><input type="text" name="learning_platform" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.quality_system }}</label><input type="text" name="quality_system" class="w-full p-1 border rounded text-sm"></div>
+
+                        <div><label class="block text-xs text-gray-600">{{ system_labels.internal_database }}</label><input type="text" name="internal_database" class="w-full p-1 border rounded text-sm"></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="flex justify-end space-x-4 border-t pt-4">
+
+                <a href="/{{ ('?' + request.query_string.decode()) if request.query_string else '' }}" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded">Cancelar</a>
+
+                <button type="submit" id="btn-guardar" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded shadow">Guardar Activo</button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <script>
+
+        function verificarOtroAlta() {
+
+            var select = document.getElementById("tipo_activo");
+
+            var inputOtro = document.getElementById("nuevo_tipo_texto");
+
+            if (select.value === "otro") {
+
+                inputOtro.classList.remove("hidden");
+
+                inputOtro.focus();
+
+            } else {
+
+                inputOtro.classList.add("hidden");
+
+            }
+
+        }
+
+
+
+        function verificarOtraPosicionAlta() {
+
+            var select = document.getElementById("posicion");
+
+            var inputOtro = document.getElementById("nueva_posicion_texto");
+
+            if (select.value === "otro") {
+
+                inputOtro.classList.remove("hidden");
+
+                inputOtro.focus();
+
+            } else {
+
+                inputOtro.classList.add("hidden");
+
+            }
+
+        }
+
+        // Estado de duplicado
+        var _esDuplicado = false;
+
+        var _duplicadoTimeout = null;
+
+        document.getElementById("num_activo").addEventListener("input", function() {
+
+            var valor = this.value.trim();
+
+            clearTimeout(_duplicadoTimeout);
+
+            var alerta = document.getElementById("alerta-duplicado");
+
+            var btn = document.getElementById("btn-guardar");
+
+            // Si está vacío o escribe "No aplica" no se verifica (puede haber varios)
+            if (!valor || valor.toLowerCase() === "no aplica") {
+
+                alerta.classList.add("hidden");
+
+                _esDuplicado = false;
+
+                btn.disabled = false;
+
+                btn.classList.remove("opacity-50", "cursor-not-allowed");
+
+                return;
+
+            }
+
+            _duplicadoTimeout = setTimeout(function() {
+
+                fetch('/api/activo/verificar?num_activo=' + encodeURIComponent(valor))
+
+                    .then(r => r.json())
+
+                    .then(data => {
+
+                        if (data.existe) {
+
+                            alerta.classList.remove("hidden");
+
+                            _esDuplicado = true;
+
+                            btn.disabled = true;
+
+                            btn.classList.add("opacity-50", "cursor-not-allowed");
+
+                        } else {
+
+                            alerta.classList.add("hidden");
+
+                            _esDuplicado = false;
+
+                            btn.disabled = false;
+
+                            btn.classList.remove("opacity-50", "cursor-not-allowed");
+
+                        }
+
+                    });
+
+            }, 400);
+
+        });
+
+        // Bloqueo final en submit (segunda línea de defensa en el cliente)
+        document.getElementById("form-alta").addEventListener("submit", function(e) {
+
+            if (_esDuplicado) {
+
+                e.preventDefault();
+
+                alert("El número de activo ya está registrado. Cambia el número antes de guardar.");
+
+                return;
+
+            }
+
+            var tipo = document.getElementById("tipo_activo").value.trim();
+
+            if (tipo === "otro") {
+
+                var nuevoTipo = document.getElementById("nuevo_tipo_texto").value.trim();
+
+                if (!nuevoTipo) {
+
+                    alert("Escribe el nombre del nuevo tipo de activo.");
+
+                    e.preventDefault();
+
+                    return;
+
+                }
+
+            }
+
+        });
+
+        function camposResponsableAlta() {
+            return ['nombre', 'extension', 'departamento', 'puesto']
+                .map(n => document.getElementById(n))
+                .filter(el => el);
+        }
+
+        function bloquearCamposAlta() {
+            camposResponsableAlta().forEach(el => {
+                el.readOnly = true;
+                el.classList.add('bg-yellow-50', 'cursor-not-allowed');
+            });
+            var aviso = document.getElementById('aviso-resp-alta');
+            if (aviso) aviso.classList.remove('hidden');
+        }
+
+        function desbloquearCamposAlta() {
+            camposResponsableAlta().forEach(el => {
+                el.readOnly = false;
+                el.classList.remove('bg-yellow-50', 'cursor-not-allowed');
+            });
+            var aviso = document.getElementById('aviso-resp-alta');
+            if (aviso) aviso.classList.add('hidden');
+        }
+
+        function ejecutarAutoLlenado(urlParam) {
+
+            fetch('/api/responsable/buscar?' + urlParam)
+
+                .then(response => response.json())
+
+                .then(data => {
+
+                    if (data.existe) {
+
+                        document.getElementById("num_empleado").value = data.num_empleado;
+
+                        document.getElementById("nombre").value = data.nombre;
+
+                        document.getElementById("extension").value = data.extension;
+
+                        document.getElementById("departamento").value = data.departamento;
+
+                        document.getElementById("puesto").value = data.puesto;
+
+                        document.getElementById("notificacion").classList.remove("hidden");
+
+                        bloquearCamposAlta();
+
+                    } else {
+
+                        document.getElementById("notificacion").classList.add("hidden");
+
+                        desbloquearCamposAlta();
+
+                    }
+
+                });
+
+        }
+
+        document.getElementById("num_empleado").addEventListener("input", function() {
+
+            var valor = this.value.trim();
+
+            if (!valor || valor.toLowerCase() === 'no aplica') {
+
+                desbloquearCamposAlta();
+
+                document.getElementById("notificacion").classList.add("hidden");
+
+                return;
+
+            }
+
+            if (valor.length >= 3) {
+
+                ejecutarAutoLlenado('num_empleado=' + encodeURIComponent(valor));
+
+            }
+
+        });
+
+        document.getElementById("nombre").addEventListener("input", function() {
+
+            var valor = this.value.trim();
+
+            if (valor.length >= 4) {
+
+                ejecutarAutoLlenado('nombre=' + encodeURIComponent(valor));
+
+            }
+
+        });
+
+    </script>
+
+</body>
+
+</html>

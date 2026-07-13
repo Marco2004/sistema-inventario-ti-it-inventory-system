@@ -1,0 +1,27 @@
+# Entorno virtual
+venv/
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc
+
+# Base de datos local
+instance/*.db
+instance/*.db-wal
+instance/*.db-shm
+instance/*.log
+
+# Variables locales y secretos
+.env
+README_LOCAL.md
+
+# Plantilla corporativa privada
+app/static/formato_reporte.xlsx
+
+# Respaldos/exportaciones locales
+*.zip
+
+# Archivos de sistema/editor
+.DS_Store
+Thumbs.db
+.vscode/

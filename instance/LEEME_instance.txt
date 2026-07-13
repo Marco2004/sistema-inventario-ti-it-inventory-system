@@ -1,0 +1,6 @@
+AQUÍ va tu base de datos: inventario.db
+
+Copia tu archivo inventario.db actual (y tus backups inventario_backup_*.db si
+quieres conservarlos) dentro de esta carpeta.
+
+La aplicación crea/lee la base de datos automáticamente en esta ubicación.
